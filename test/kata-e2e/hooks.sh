@@ -35,6 +35,14 @@ kata_prepare() {
   timeout 300s docker build -f "$KATA_HERE/Tools.Dockerfile" -t "$KATA_TOOLS" "$KATA_HERE"
   timeout 30s docker volume create --label "io.cubepod.e2e=$CLUSTER_NAME" "$KATA_VOLUME" >/dev/null
   timeout 180s docker run --rm -i --name "$CLUSTER_NAME-extract" --label "io.cubepod.e2e=$CLUSTER_NAME" -v "$KATA_VOLUME:/opt/kata" "$KATA_TOOLS" tar --zstd -xf - -C / <"$bundle"
+  if [[ -n ${KATA_AGENT_OVERRIDE_BIN:-} ]]; then
+    local override_bin
+    override_bin=$(realpath "$KATA_AGENT_OVERRIDE_BIN")
+    [[ -x "$override_bin" ]] || { echo "Missing KATA_AGENT_OVERRIDE_BIN: $override_bin" >&2; return 1; }
+    timeout 180s docker run --rm -i --name "$CLUSTER_NAME-repack" --label "io.cubepod.e2e=$CLUSTER_NAME" --network none \
+      -v "$KATA_VOLUME:/opt/kata" -v "$override_bin:/tmp/kata-agent-override:ro" \
+      "$KATA_TOOLS" bash -s -- "$KATA_VMM" <"$KATA_HERE/repack_guest_image.sh" >"$ARTIFACTS/kata-agent-repack.json"
+  fi
   timeout 90s docker run --rm -i --name "$CLUSTER_NAME-kvm" --label "io.cubepod.e2e=$CLUSTER_NAME" --memory=128m --cpus=1 --network none --device /dev/kvm "$KATA_TOOLS" python3 - <"$KATA_HERE/kvm_preflight.py" >"$ARTIFACTS/kvm-preflight.log" 2>&1
   timeout 90s docker run --rm -i --name "$CLUSTER_NAME-guest" --label "io.cubepod.e2e=$CLUSTER_NAME" --memory=512m --cpus=1 --network none --device /dev/kvm -v "$KATA_VOLUME:/opt/kata:ro" "$KATA_TOOLS" python3 - "$KATA_VMM" <"$KATA_HERE/guest_preflight.py" >"$ARTIFACTS/host-guest.log" 2>&1
   KATA_MOUNT=$(timeout 30s docker volume inspect --format '{{.Mountpoint}}' "$KATA_VOLUME")

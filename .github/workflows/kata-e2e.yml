@@ -1,6 +1,8 @@
 name: Kata E2E
 
 on:
+  push:
+    branches: [test/pr118-kata-fc-capacity-fix]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -16,7 +18,7 @@ jobs:
   kata-e2e:
     name: Kata ${{ matrix.name }} / official SDK E2E
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
@@ -51,6 +53,11 @@ jobs:
       - name: Load thin-pool module on this disposable hosted runner only
         if: matrix.vmm == 'fc'
         run: sudo modprobe dm_thin_pool
+      - name: Build patched Kata 4.4.0 kata-agent with virtio-mmio capacity fix
+        if: matrix.vmm == 'fc'
+        run: |
+          bash test/kata-e2e/build_patched_agent.sh "$GITHUB_WORKSPACE/.kind-e2e/patched/kata-agent"
+          echo "KATA_AGENT_OVERRIDE_BIN=$GITHUB_WORKSPACE/.kind-e2e/patched/kata-agent" >> "$GITHUB_ENV"
       - name: Host real Linux guest, kind Kata and complete official SDK E2E
         run: |
           mkdir -p "$ARTIFACTS"
