@@ -20,7 +20,7 @@ curl -fsSL --retry 3 https://github.com/seccomp/libseccomp/releases/download/v2.
   | tar -xz -C "$WORKDIR"
 (
   cd "$WORKDIR/libseccomp-2.5.5"
-  CC=musl-gcc CFLAGS="-O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1" \
+  CFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1 -O2" \
     ./configure --prefix="$WORKDIR/seccomp" --enable-static --disable-shared
   make -j"$(nproc)"
   make install
