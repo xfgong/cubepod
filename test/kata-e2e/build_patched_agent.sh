@@ -34,6 +34,7 @@ rustup toolchain install 1.97 --profile minimal --target x86_64-unknown-linux-mu
 (
   cd "$WORKDIR/kata"
   export RUSTUP_TOOLCHAIN=1.97
+  export CARGO_BUILD_JOBS="$(nproc)"
   export LIBSECCOMP_LINK_TYPE=static
   export LIBSECCOMP_LIB_PATH="$WORKDIR/seccomp/lib"
   export PKG_CONFIG_PATH="$WORKDIR/seccomp/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
@@ -42,7 +43,8 @@ rustup toolchain install 1.97 --profile minimal --target x86_64-unknown-linux-mu
 
 BUILT_BIN="$WORKDIR/kata/target/x86_64-unknown-linux-musl/release/kata-agent"
 [[ -x "$BUILT_BIN" ]] || { echo "Expected built kata-agent at $BUILT_BIN" >&2; exit 1; }
-file "$BUILT_BIN" | tee /dev/stderr | grep -q "statically linked"
+strip "$BUILT_BIN"
+file "$BUILT_BIN" | tee /dev/stderr | grep -Eq "(statically|static-pie) linked"
 
 mkdir -p "$(dirname "$OUT_BIN")"
 install -m 0755 "$BUILT_BIN" "$OUT_BIN"
